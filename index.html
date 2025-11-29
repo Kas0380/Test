@@ -1,0 +1,313 @@
+<!DOCTYPE HTML>
+<!--
+
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<!-- Background Video -->
+	<video id="bg-video" autoplay muted loop playsinline>
+		<source src="videos/ch video.mp4" type="video/mp4">
+	</video>
+
+	<!-- Dark Overlay -->
+	<div id="overlay"></div>
+
+	<!-- Top-left icon + text -->
+	<div class="top-left">
+		<img src="images/logo.png" alt="Logo" class="icon">
+		<span class="text">Digits N Data</span>
+	</div>
+
+    <!-- Top-right navigation -->
+	<div class="top-right">
+		<a href="instructions.html" class="nav-link">Instructions</a>
+	</div>
+
+	<head>
+		<title>Digits n Data</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+	</head>
+	<body class="is-preload">
+
+		<!-- Header -->
+			<header id="header">
+				<h1>Six Weeks To Save Reality</h1>
+				<p>Time is fracturing. Six stones awaken. Six weeks left to save reality.</p>
+                <p>Join the challenge, use SQL and the winner earns 3 days inside Digits N Data.</p>
+			</header>
+
+		<!-- Signup Form -->
+			<form id="signup-form" method="post">
+
+				<input type="text" name="name" id="signup-name" placeholder="Your Name" required />
+
+				<input type="email" name="email" id="signup-email" placeholder="Email Address" required />
+
+				<input type="url" name="linkedin" id="signup-linkedin" placeholder="LinkedIn Profile URL" required />
+
+        <button type="submit" id="signup-button">
+            <span class="btn-text">Submit</span>
+            <span class="spinner" id="loader"></span>
+        </button>
+
+
+				<!-- Toast / message element (kept in DOM) -->
+				<span class="message" id="signup-message" aria-live="polite" role="status"></span>
+
+			</form>
+
+			<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+			<script>
+			// Your Supabase values (kept same)
+			const supabaseUrl = "https://bttqxodchlyfkrgvpkia.supabase.co";
+			const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0dHF4b2RjaGx5ZmtyZ3Zwa2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwODM0OTcsImV4cCI6MjA3OTY1OTQ5N30.vMXZSO8IQ6nS2uiXb2MgKl_gks-LvMUbLLe_feMFYP8";
+
+			// Initialize Supabase client
+			const { createClient } = supabase;
+			const supabaseClient = createClient(supabaseUrl, supabaseKey);
+			</script>
+
+<style>
+/* --- MOBILE ONLY CHANGES (does NOT affect PC) --- */
+
+@media (max-width: 600px) {
+    #signup-form {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        align-items: stretch; /* makes ALL children same width */
+    }
+
+    /* Inputs full width */
+    #signup-form input {
+        width: 100% !important;
+    }
+
+    /* Button on the right but still same width logic */
+    #signup-button {
+        align-self: flex-end;
+        width: auto; /* Keep button size natural */
+        padding: 0 20px; 
+    }
+
+
+    /* Message styling for clarity when not using toast */
+    #signup-message {
+        width: 100%;
+        margin-top: 8px;
+        font-weight: bold;
+        text-align: center;
+        display: block;
+    }
+}
+
+/* Keep toast initially hidden; JS will show it with inline styles */
+#signup-message { display: none; }
+
+/* Spinner style */
+.spinner{
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,0.25);
+  border-top-color: rgba(255,255,255,0.95);
+  display:inline-block;
+  animation: spin 1s linear infinite;
+  visibility:hidden;
+}
+#signup-button.loading .spinner{ visibility:visible; }
+@keyframes spin{ to { transform: rotate(360deg); } }
+
+/* Small highlight when email is duplicate */
+.input-error {
+  outline: 2px solid rgba(200,40,40,0.9);
+  box-shadow: 0 0 6px rgba(200,40,40,0.25);
+}
+
+/* Glassmorphic Toast */
+.toast-glass {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(0, 0, 0, 0.35); /* transparent dark glass */
+    border-radius: 14px;
+    padding: 14px 18px;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+    width: 90%;
+    max-width: 340px;
+    margin: 0 auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+
+/* Text color based on type */
+.toast-success { color: #42ff9d !important; } /* neon green */
+.toast-error   { color: #ff5f63 !important; } /* soft red */
+
+</style>
+
+<!-- Final script: shows on-screen toast and handles duplicate-key nicely -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("signup-form");
+  const message = document.getElementById("signup-message");
+  const nameEl = document.getElementById("signup-name");
+  const emailEl = document.getElementById("signup-email");
+  const linkedinEl = document.getElementById("signup-linkedin");
+  const button = document.getElementById("signup-button");
+  let hideTimer = null;
+
+  if (!form || !message || !nameEl || !emailEl || !linkedinEl || !button) {
+    console.error("Required elements missing");
+    return;
+  }
+
+  // Inline toast show (overrides external CSS)
+  function showToast(text, type = "info", autoHideMs = 5000) {
+    clearTimeout(hideTimer);
+
+    // button visual state
+    if (type === "info") {
+      button.classList.add("loading");
+      button.setAttribute("disabled", "disabled");
+    } else {
+      button.classList.remove("loading");
+      button.removeAttribute("disabled");
+    }
+
+    // set text
+    message.textContent = text;
+
+    // Reset all previous classes
+    message.className = "";
+    message.classList.add("toast-glass");
+
+    if (type === "success") message.classList.add("toast-success");
+    if (type === "error") message.classList.add("toast-error");
+
+
+    // inline styles to ensure visibility
+    Object.assign(message.style, {
+      position: "fixed",
+      left: "50%",
+      transform: "translateX(-50%)",
+      bottom: "24px",
+      zIndex: "999999",
+      display: "block",
+      minWidth: "260px",
+      maxWidth: "calc(100% - 40px)",
+      padding: "12px 16px",
+      borderRadius: "10px",
+      fontWeight: "600",
+      textAlign: "center",
+      boxShadow: "0 6px 20px rgba(0,0,0,0.45)",
+      pointerEvents: "auto",
+      opacity: "0",
+      transition: "opacity .22s ease, transform .22s ease"
+    });
+
+    // fade in
+    requestAnimationFrame(() => {
+      message.style.opacity = "1";
+      message.style.transform = "translateX(-50%) translateY(0)";
+    });
+
+    if (autoHideMs && autoHideMs > 0) {
+      hideTimer = setTimeout(() => {
+        // fade out
+        message.style.opacity = "0";
+        setTimeout(() => {
+          message.style.display = "none";
+        }, 240);
+      }, autoHideMs);
+    }
+  }
+
+  // Helper to detect Postgres unique-violation (common code 23505) or message text
+  function isDuplicateKeyError(err) {
+    if (!err) return false;
+    // Supabase may include `code` (like "23505") or message text containing 'duplicate key'
+    if (err.code && (err.code === "23505" || err.code === 23505)) return true;
+    const msg = (err.message || "").toLowerCase();
+    if (msg.includes("duplicate key") || msg.includes("unique") || msg.includes("already exists")) return true;
+    // sometimes the error is nested in err.details or err.hint
+    const details = (err.details || "").toLowerCase();
+    if (details.includes("duplicate") || details.includes("already exists")) return true;
+    return false;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    // Clear any previous input error state
+    emailEl.classList.remove("input-error");
+
+    // Immediate visible feedback
+    showToast("Processing your submission...", "info", 0);
+
+    // Set loading state on button
+    button.classList.add("loading");
+    button.setAttribute("disabled", "disabled");
+
+    const name = nameEl.value.trim();
+    const email = emailEl.value.trim();
+    const linkedin = linkedinEl.value.trim();
+
+    try {
+      const { data, error } = await supabaseClient
+        .from("Signups")
+        .insert([{ name, email, linkedin }]);
+
+      // remove loading state
+      button.classList.remove("loading");
+      button.removeAttribute("disabled");
+
+      if (error) {
+        console.error("Supabase error:", error);
+
+        if (isDuplicateKeyError(error)) {
+          // Friendly message for duplicate email
+          showToast("This email is already registered. If it's you, try signing up with another email or contact support.", "error", 8000);
+          // highlight and focus email input
+          emailEl.classList.add("input-error");
+          emailEl.focus();
+        } else {
+          // Generic error display
+          showToast("Submission failed: " + (error.message || "Unknown error"), "error", 7000);
+        }
+      } else {
+        // Success
+        console.log("Success:", data);
+        showToast("Congratulations! You've signed up for the challenge. Please read instructions.", "success", 5000);
+        form.reset();
+        nameEl.focus();
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      button.classList.remove("loading");
+      button.removeAttribute("disabled");
+
+      // Network or unexpected error
+      showToast("Submission failed: " + (err.message || "Network or unexpected error"), "error", 7000);
+    }
+  });
+});
+</script>
+
+		<!-- Footer -->
+			<footer id="footer">
+				<ul class="icons">
+					<li><a href="https://in.linkedin.com/company/digits-n-data" class="icon brands fa-linkedin"><span class="label">LinkedIn</span></a></li>
+					<li><a href="mailto:digitsndata@gmail.com" class="icon fa-envelope"><span class="label">Email</span></a></li>
+				</ul>
+				<ul class="copyright">
+					<li>&copy; Digits n Data.</li>
+			</footer>
+
+		<!-- Scripts -->
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
